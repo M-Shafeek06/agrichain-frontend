@@ -1,0 +1,16 @@
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;      /* 🔒 kill vertical scroll */
+  background: #f8fafc;
+}
+
+#root {
+  width: 100%;
+  height: 100%;          /* ❗ DO NOT USE min-height */
+  overflow: hidden;     /* 🔒 lock app container */
+  padding-top: 86px;   /* navbar height */
+  box-sizing: border-box;
+}
