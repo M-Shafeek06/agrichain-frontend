@@ -253,18 +253,22 @@ export default function RetailWarehousePage() {
                 </div>
 
                 {/* QR */}
-                {item.allocationQR && (
-                    <div
-                        style={styles.qrSection}
-                        onClick={() => navigate(`/verify/${item.inventoryId}`)}
-                    >
-                        <img
-                            src={item.allocationQR}
-                            alt="QR"
-                            style={styles.qrImage}
-                        />
-                    </div>
-                )}
+                <div
+                    style={styles.qrSection}
+                    onClick={() => navigate(`/verify/${item.inventoryId}`)}
+                >
+                    {(() => {
+                        const viewUrl = `${window.location.origin}/verify/${item.inventoryId}`;
+
+                        return (
+                            <img
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(viewUrl)}`}
+                                alt="QR"
+                                style={styles.qrImage}
+                            />
+                        );
+                    })()}
+                </div>
             </div>
         );
     };
