@@ -33,7 +33,7 @@ export default function RecentSubmissions({ refresh }) {
       <h3 style={{ marginBottom: 16 }}>Recent Submissions</h3>
 
       {items.slice(0, 2).map((item) => {
-        const viewUrl = `/produce/view/${item.batchId}`;
+        const viewUrl = `https://agrichain-frontend-alpha.vercel.app/produce/view/${item.batchId}`;
 
         let statusLabel = "AUTHENTIC";
 
