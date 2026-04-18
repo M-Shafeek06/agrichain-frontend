@@ -12,6 +12,8 @@ export default function RetailerRequests() {
     const [requests, setRequests] = useState([]);
     const [search, setSearch] = useState("");
 
+    const [loadingConfirm, setLoadingConfirm] = useState(null);
+
     const downloadInvoice = async (invoiceId) => {
         try {
             const roleId = localStorage.getItem("roleId");
@@ -198,8 +200,15 @@ export default function RetailerRequests() {
                                                 ) : r.status === "DELIVERED" && !r.recorded ? (
 
                                                     <button
-                                                        style={styles.confirmBtn}
+                                                        style={{
+                                                            ...styles.confirmBtn,
+                                                            opacity: loadingConfirm === r.requestId ? 0.5 : 1,
+                                                            cursor: loadingConfirm === r.requestId ? "not-allowed" : "pointer"
+                                                        }}
+                                                        disabled={loadingConfirm === r.requestId}
                                                         onClick={async () => {
+
+                                                            if (loadingConfirm === r.requestId) return; // 🔒 prevent spam
 
                                                             const confirmed = window.confirm(
                                                                 "Have you physically received the product?\n\nClick OK to confirm."
@@ -208,6 +217,8 @@ export default function RetailerRequests() {
                                                             if (!confirmed) return;
 
                                                             try {
+                                                                setLoadingConfirm(r.requestId); // 🔒 lock
+
                                                                 await api.post(
                                                                     `/shipments/retailer/confirm/${r.batchId}`,
                                                                     {},
@@ -226,11 +237,14 @@ export default function RetailerRequests() {
 
                                                             } catch (err) {
                                                                 alert(err.response?.data?.message || "Failed");
+                                                            } finally {
+                                                                setLoadingConfirm(prev =>
+                                                                    prev === r.requestId ? null : prev
+                                                                ); // 🔓 unlock
                                                             }
-
                                                         }}
                                                     >
-                                                        Confirm
+                                                        {loadingConfirm === r.requestId ? "Processing..." : "Confirm"}
                                                     </button>
 
                                                 ) : r.recorded ? (
