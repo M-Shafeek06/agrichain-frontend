@@ -43,29 +43,37 @@ function IncomingHome({ setOpen }) {
     const [ownershipModal, setOwnershipModal] = useState(null);
     const [ownershipTyped, setOwnershipTyped] = useState("");
 
-    async function handleConfirm(id) {
+    const [loadingOwnership, setLoadingOwnership] = useState(false);
+    const [loadingPrice, setLoadingPrice] = useState(null);
+
+    async function handleConfirm() {
+        if (loadingOwnership) return; // 🔒 block multiple clicks
+
         try {
+            setLoadingOwnership(true);
+
             const roleId = localStorage.getItem("roleId");
 
             await api.post(
                 `/distributor/accept`,
-                {
-                    batchId: ownershipModal.batchId
-                },
-                {
-                    headers: { "x-role-id": roleId }
-                }
+                { batchId: ownershipModal.batchId },
+                { headers: { "x-role-id": roleId } }
             );
 
-            // 🔁 REFRESH DATA
             const res = await api.get(`/distributor/incoming`, {
                 headers: { "x-role-id": roleId }
             });
 
             setShipments(res.data || []);
 
+            setOwnershipModal(null);
+            setOwnershipTyped("");
+
         } catch (err) {
             console.error(err);
+            alert("Ownership confirmation failed. Please try again.");
+        } finally {
+            setLoadingOwnership(false); // 🔓 unlock
         }
     }
 
@@ -75,7 +83,11 @@ function IncomingHome({ setOpen }) {
     });
 
     async function handlePriceConfirm(shipment) {
+        if (loadingPrice === shipment.batchId) return; // 🔒 block spam
+
         try {
+            setLoadingPrice(shipment.batchId);
+
             const roleId = localStorage.getItem("roleId");
 
             await api.post(
@@ -89,7 +101,6 @@ function IncomingHome({ setOpen }) {
                 }
             );
 
-            // 🔁 REFRESH DATA
             const res = await api.get(`/distributor/incoming`, {
                 headers: { "x-role-id": roleId }
             });
@@ -98,12 +109,19 @@ function IncomingHome({ setOpen }) {
 
         } catch (err) {
             console.error(err?.response?.data?.message || "Confirmation failed");
+            alert("Price confirmation failed. Please try again.");
+        } finally {
+            setLoadingPrice(prev =>
+                prev === shipment.batchId ? null : prev
+            );// 🔓 unlock
         }
     }
 
     /* ================= FETCH ================= */
 
     useEffect(() => {
+        let isMounted = true;
+
         async function fetchHistory() {
             try {
                 const roleId = localStorage.getItem("roleId");
@@ -112,13 +130,19 @@ function IncomingHome({ setOpen }) {
                     headers: { "x-role-id": roleId }
                 });
 
-                setShipments(res.data || []);
+                if (isMounted) {
+                    setShipments(res.data || []);
+                }
             } catch (err) {
                 console.error("History fetch failed:", err);
             }
         }
 
         fetchHistory();
+
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     /* ================= FILTER ================= */
@@ -481,6 +505,9 @@ function IncomingHome({ setOpen }) {
                                 type="text"
                                 value={typed}
                                 onChange={(e) => setTyped(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") e.preventDefault();
+                                }}
                                 style={{
                                     width: "100%",
                                     padding: 8,
@@ -496,18 +523,21 @@ function IncomingHome({ setOpen }) {
                                         ...styles.confirmBtn,
                                         opacity:
                                             typed === "CONFIRM" &&
-                                                (!isTampered || acknowledged)
+                                                (!isTampered || acknowledged) &&
+                                                loadingPrice !== confirmModal.batchId
                                                 ? 1
                                                 : 0.5,
                                         cursor:
                                             typed === "CONFIRM" &&
-                                                (!isTampered || acknowledged)
+                                                (!isTampered || acknowledged) &&
+                                                loadingPrice !== confirmModal.batchId
                                                 ? "pointer"
                                                 : "not-allowed"
                                     }}
                                     disabled={
                                         typed !== "CONFIRM" ||
-                                        (isTampered && !acknowledged)
+                                        (isTampered && !acknowledged) ||
+                                        loadingPrice === confirmModal.batchId
                                     }
                                     onClick={async () => {
                                         await handlePriceConfirm(confirmModal);
@@ -515,15 +545,19 @@ function IncomingHome({ setOpen }) {
                                         setConfirmModal(null);
                                     }}
                                 >
-                                    Final Confirm
+                                    {loadingPrice === confirmModal.batchId ? "Processing..." : "Final Confirm"}
                                 </button>
 
                                 <button
                                     style={{
                                         ...styles.confirmBtn,
-                                        background: "#6b7280"
+                                        background: "#6b7280",
+                                        opacity: loadingPrice === confirmModal.batchId ? 0.5 : 1,
+                                        cursor: loadingPrice === confirmModal.batchId ? "not-allowed" : "pointer"
                                     }}
+                                    disabled={loadingPrice === confirmModal.batchId}
                                     onClick={() => {
+                                        if (loadingPrice === confirmModal.batchId) return;
                                         setTyped("");
                                         setConfirmModal(null);
                                     }}
@@ -587,6 +621,9 @@ function IncomingHome({ setOpen }) {
                             type="text"
                             value={ownershipTyped}
                             onChange={(e) => setOwnershipTyped(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") e.preventDefault();
+                            }}
                             style={{
                                 width: "100%",
                                 padding: 8,
@@ -600,25 +637,29 @@ function IncomingHome({ setOpen }) {
                             <button
                                 style={{
                                     ...styles.confirmBtn,
-                                    opacity: ownershipTyped === "ACCEPT" ? 1 : 0.5,
-                                    cursor: ownershipTyped === "ACCEPT" ? "pointer" : "not-allowed"
+                                    opacity:
+                                        ownershipTyped === "ACCEPT" && !loadingOwnership ? 1 : 0.5,
+                                    cursor:
+                                        ownershipTyped === "ACCEPT" && !loadingOwnership
+                                            ? "pointer"
+                                            : "not-allowed"
                                 }}
-                                disabled={ownershipTyped !== "ACCEPT"}
-                                onClick={async () => {
-                                    await handleConfirm(ownershipModal._id);
-                                    setOwnershipModal(null);
-                                    setOwnershipTyped("");
-                                }}
+                                disabled={ownershipTyped !== "ACCEPT" || loadingOwnership}
+                                onClick={handleConfirm}
                             >
-                                Accept & Confirm
+                                {loadingOwnership ? "Processing..." : "Accept & Confirm"}
                             </button>
 
                             <button
                                 style={{
                                     ...styles.confirmBtn,
-                                    background: "#6b7280"
+                                    background: "#6b7280",
+                                    opacity: loadingOwnership ? 0.5 : 1,
+                                    cursor: loadingOwnership ? "not-allowed" : "pointer"
                                 }}
+                                disabled={loadingOwnership}
                                 onClick={() => {
+                                    if (loadingOwnership) return;
                                     setOwnershipModal(null);
                                     setOwnershipTyped("");
                                 }}
@@ -626,6 +667,20 @@ function IncomingHome({ setOpen }) {
                                 Cancel
                             </button>
                         </div>
+                        {loadingOwnership && (
+                            <div style={{
+                                position: "absolute",
+                                inset: 0,
+                                background: "rgba(255,255,255,0.6)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                borderRadius: 16,
+                                fontWeight: 600
+                            }}>
+                                Processing Blockchain...
+                            </div>
+                        )}
 
                     </div>
                 </div>
@@ -743,6 +798,7 @@ const styles = {
     },
 
     modalBox: {
+        position: "relative",
         background: "#fff",
         padding: 30,
         borderRadius: 16,
