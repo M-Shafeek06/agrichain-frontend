@@ -48,20 +48,21 @@ export default function RetailerDashboard() {
 
             if (!data) return;
 
-            const total = data.totalReceived || 0;
-            const verified = data.verified || 0;
-            const tampered = data.tampered || 0;
+            const total = data.totalReceived ?? 0;
+            const verified = data.verified ?? 0;
+            const tampered = data.tampered ?? 0;
 
             // Sold & Stock logic (safe fallback)
-            const sold = data.sold || 0;
-            const onStock = data.onStock || Math.max(total - sold, 0);
+            const sold = data.sold ?? 0;
+            const onStock = data.onStock ?? Math.max(total - sold, 0);
 
             setStats({
                 totalReceived: total,
                 verified,
                 tampered,
-                tamperedQuantity: data.tamperedQuantity || 0,
-                dailySales: data.dailySales || []
+                tamperedQuantity: data.tamperedQuantity ?? 0,
+                dailySales: data.dailySales ?? [],
+                todaySold: data.todaySold ?? 0
             });
 
             setSoldCount(sold);

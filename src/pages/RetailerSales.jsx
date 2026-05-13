@@ -46,20 +46,27 @@ export default function RetailerSales() {
     /* ================= CALCULATIONS ================= */
 
     const totalSold = sales.reduce(
-        (sum, s) => sum + (Number(s.quantitySold) || 0),
+        (sum, s) => sum + (Number(s.quantitySold) ?? 0),
         0
     );
 
     const totalTransactions = sales.length;
 
-    const today = new Date().toDateString();
+    const now = new Date();
 
-    const todaySales = sales.filter(
-        s => new Date(s.createdAt).toDateString() === today
+const todaySales = sales.filter(s => {
+
+    const saleDate = new Date(s.createdAt);
+
+    return (
+        saleDate.getDate() === now.getDate() &&
+        saleDate.getMonth() === now.getMonth() &&
+        saleDate.getFullYear() === now.getFullYear()
     );
+});
 
     const todaySoldQty = todaySales.reduce(
-        (sum, s) => sum + (Number(s.quantitySold) || 0),
+        (sum, s) => sum + (Number(s.quantitySold) ?? 0),
         0
     );
 
@@ -174,16 +181,22 @@ export default function RetailerSales() {
                                             </tr>
                                         )}
 
-                                        {sales.slice(0, 20).map(s => (
-                                            <tr key={s._id}>
-                                                <td style={styles.td}>{s.cropName}</td>
-                                                <td style={styles.td}>{s.batchId}</td>
-                                                <td style={styles.td}>{s.quantitySold} kg</td>
-                                                <td style={styles.td}>
-                                                    {new Date(s.createdAt).toLocaleDateString()}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {[...sales]
+    .sort(
+        (a, b) =>
+            new Date(b.createdAt) - new Date(a.createdAt)
+    )
+    .slice(0, 20)
+    .map(s => (
+        <tr key={s._id}>
+            <td style={styles.td}>{s.cropName}</td>
+            <td style={styles.td}>{s.batchId}</td>
+            <td style={styles.td}>{s.quantitySold} kg</td>
+            <td style={styles.td}>
+                {new Date(s.createdAt).toLocaleDateString()}
+            </td>
+        </tr>
+))}
                                     </tbody>
                                 </table>
                             </div>
